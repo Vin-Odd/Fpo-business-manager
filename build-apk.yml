@@ -1,0 +1,40 @@
+name: Build APK
+
+# Runs automatically on every push to main, and can also be triggered
+# manually from the Actions tab (the "Run workflow" button).
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Generates app_database.g.dart, product_dao.g.dart, etc. — the
+      # same step setup.sh runs locally, just happening on GitHub's
+      # machine instead of yours.
+      - name: Generate drift/riverpod code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Debug build: unsigned, installable directly for testing, no
+      # release signing key needed. Good enough to check the app runs;
+      # a real Play Store release would need `flutter build apk --release`
+      # plus a signing key, which is a separate step for later.
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fpo-business-manager-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
